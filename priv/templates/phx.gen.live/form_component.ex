@@ -9,7 +9,7 @@ defmodule <%= inspect context.web_module %>.<%= inspect Module.concat(schema.web
     <div>
       <.header>
         <%%= @title %>
-        <:subtitle>Use this form to manage <%= schema.singular %> records in your database.</:subtitle>
+        <:subtitle><%= maybe_gettext.("Use this form to manage #{schema.singular} records in your database.", :eex, @gettext) %></:subtitle>
       </.header>
 
       <.simple_form
@@ -21,7 +21,7 @@ defmodule <%= inspect context.web_module %>.<%= inspect Module.concat(schema.web
       >
 <%= Mix.Tasks.Phx.Gen.Html.indent_inputs(inputs, 8) %>
         <:actions>
-          <.button phx-disable-with="Saving...">Save <%= schema.human_singular %></.button>
+          <.button phx-disable-with=<%= maybe_gettext.("Saving...", :heex_attr, @gettext) %>><%= maybe_gettext.("Save #{schema.human_singular}", :eex, @gettext) %></.button>
         </:actions>
       </.simple_form>
     </div>
@@ -59,7 +59,7 @@ defmodule <%= inspect context.web_module %>.<%= inspect Module.concat(schema.web
 
         {:noreply,
          socket
-         |> put_flash(:info, "<%= schema.human_singular %> updated successfully")
+         |> put_flash(:info, <%= maybe_gettext.("#{schema.human_singular} updated successfully", :ex, @gettext) %>)
          |> push_patch(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
@@ -74,7 +74,7 @@ defmodule <%= inspect context.web_module %>.<%= inspect Module.concat(schema.web
 
         {:noreply,
          socket
-         |> put_flash(:info, "<%= schema.human_singular %> created successfully")
+         |> put_flash(:info, <%= maybe_gettext.("#{schema.human_singular} created successfully", :ex, @gettext) %>)
          |> push_patch(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->

@@ -16,6 +16,6 @@ defmodule <%= inspect context.web_module %>.<%= inspect Module.concat(schema.web
      |> assign(:<%= schema.singular %>, <%= inspect context.alias %>.get_<%= schema.singular %>!(id))}
   end
 
-  defp page_title(:show), do: "Show <%= schema.human_singular %>"
-  defp page_title(:edit), do: "Edit <%= schema.human_singular %>"
+  defp page_title(:show), do: <%= maybe_gettext.("Show #{schema.human_singular}", :ex, @gettext) %>
+  defp page_title(:edit), do: <%= maybe_gettext.("Edit #{schema.human_singular}", :ex, @gettext) %>
 end

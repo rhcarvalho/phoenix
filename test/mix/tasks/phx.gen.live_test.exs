@@ -74,10 +74,17 @@ defmodule Mix.Tasks.Phx.Gen.LiveTest do
 
       assert_file "lib/phoenix_web/live/post_live/index.ex", fn file ->
         assert file =~ "defmodule PhoenixWeb.PostLive.Index"
+
+        assert file =~ ~S|assign(:page_title, gettext("Edit Post"))|
+        assert file =~ ~S|assign(:page_title, gettext("New Post"))|
+        assert file =~ ~S|assign(:page_title, gettext("Listing Posts"))|
       end
 
       assert_file "lib/phoenix_web/live/post_live/show.ex", fn file ->
         assert file =~ "defmodule PhoenixWeb.PostLive.Show"
+
+        assert file =~ ~S|defp page_title(:show), do: gettext("Show Post")|
+        assert file =~ ~S|defp page_title(:edit), do: gettext("Edit Post")|
       end
 
       assert_file "lib/phoenix_web/live/post_live/form_component.ex", fn file ->
@@ -93,17 +100,21 @@ defmodule Mix.Tasks.Phx.Gen.LiveTest do
 
       assert_file "lib/phoenix_web/live/post_live/index.html.heex", fn file ->
         assert file =~ ~S|~p"/posts"|
+
+        assert file =~ ~S|<%= gettext("Listing Posts") %>|
       end
 
       assert_file "lib/phoenix_web/live/post_live/show.html.heex", fn file ->
         assert file =~ ~S|~p"/posts"|
+
+        assert file =~ ~S|<%= gettext("Post") %> <%= @post.id %>|
       end
 
       assert_file "lib/phoenix_web/live/post_live/form_component.ex", fn file ->
         assert file =~ ~s(<.simple_form)
         assert file =~ ~s(<.input field={@form[:title]} type="text")
         assert file =~ ~s(<.input field={@form[:votes]} type="number")
-        assert file =~ ~s(<.input field={@form[:cost]} type="number" label="Cost" step="any")
+        assert file =~ ~s|<.input field={@form[:cost]} type="number" label={gettext("Cost")} step="any"|
         assert file =~ """
                 <.input
                   field={@form[:tags]}
@@ -116,7 +127,7 @@ defmodule Mix.Tasks.Phx.Gen.LiveTest do
         assert file =~ ~s(<.input field={@form[:deleted_at]} type="datetime-local")
         assert file =~ ~s(<.input field={@form[:announcement_date]} type="date")
         assert file =~ ~s(<.input field={@form[:alarm]} type="time")
-        assert file =~ ~s(<.input field={@form[:secret]} type="text" label="Secret" />)
+        assert file =~ ~s|<.input field={@form[:secret]} type="text" label={gettext("Secret")} />|
         refute file =~ ~s(<field={@form[:metadata]})
         assert file =~ """
                 <.input
@@ -126,6 +137,8 @@ defmodule Mix.Tasks.Phx.Gen.LiveTest do
         assert file =~ ~s|Ecto.Enum.values(Phoenix.Blog.Post, :status)|
 
         refute file =~ ~s(<.input field={@form[:user_id]})
+
+        assert file =~ ~S|put_flash(:info, gettext("|
       end
 
       assert_file "test/phoenix_web/live/post_live_test.exs", fn file ->
@@ -330,6 +343,39 @@ defmodule Mix.Tasks.Phx.Gen.LiveTest do
       assert_file "lib/phoenix_web/live/comment_live/index.html.heex"
       assert_file "lib/phoenix_web/live/comment_live/show.html.heex"
       assert_file "test/phoenix_web/live/comment_live_test.exs"
+    end
+  end
+
+  test "with --no-gettext omits gettext calls", config do
+    in_tmp_live_project config.test, fn ->
+      Gen.Live.run(~w(Blog Post posts title:string --no-gettext))
+
+      assert_file "lib/phoenix/blog.ex"
+      assert_file "lib/phoenix/blog/post.ex"
+
+      assert_file "lib/phoenix_web/live/post_live/index.ex", fn file ->
+        refute file =~ "gettext"
+      end
+
+      assert_file "lib/phoenix_web/live/post_live/show.ex", fn file ->
+        refute file =~ "gettext"
+      end
+
+      assert_file "lib/phoenix_web/live/post_live/form_component.ex", fn file ->
+        refute file =~ "gettext"
+      end
+
+      assert_file "lib/phoenix_web/live/post_live/index.html.heex", fn file ->
+        refute file =~ "gettext"
+      end
+
+      assert_file "lib/phoenix_web/live/post_live/show.html.heex", fn file ->
+        refute file =~ "gettext"
+      end
+
+      assert_file "test/phoenix_web/live/post_live_test.exs", fn file ->
+        refute file =~ "gettext"
+      end
     end
   end
 
