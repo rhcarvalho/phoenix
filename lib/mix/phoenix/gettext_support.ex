@@ -8,6 +8,7 @@ defmodule Mix.Phoenix.GettextSupport do
 
     * `:heex_attr` - Used in a HEEx attribute value.
     * `:eex` - Used in an EEx template.
+    * `:ex` - Used in an Elixir expression.
 
   ## Examples
 
@@ -22,6 +23,12 @@ defmodule Mix.Phoenix.GettextSupport do
 
       iex> ~s|<tag>#{maybe_gettext("Hello", :eex, false)}</tag>|
       ~S|<tag>Hello</tag>|
+
+      iex> ~s|defp hello, do: #{maybe_gettext("Hello", :ex, true)}|
+      ~S|defp hello, do: gettext("Hello")|
+
+      iex> ~s|defp hello, do: #{maybe_gettext("Hello", :ex, false)}|
+      ~S|defp hello, do: "Hello"|
   """
   @spec maybe_gettext(binary(), :heex_attr | :eex | :ex, boolean()) :: binary()
   def maybe_gettext(message, role, gettext?)
@@ -39,6 +46,14 @@ defmodule Mix.Phoenix.GettextSupport do
       ~s|<%= gettext(#{inspect(message)}) %>|
     else
       message
+    end
+  end
+
+  def maybe_gettext(message, :ex, gettext?) do
+    if gettext? do
+      ~s|gettext(#{inspect(message)})|
+    else
+      inspect(message)
     end
   end
 end

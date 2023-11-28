@@ -16,19 +16,19 @@ defmodule <%= inspect context.web_module %>.<%= inspect Module.concat(schema.web
 
   defp apply_action(socket, :edit, %{"id" => id}) do
     socket
-    |> assign(:page_title, "Edit <%= schema.human_singular %>")
+    |> assign(:page_title, <%= maybe_gettext.("Edit #{schema.human_singular}", :ex, @gettext) %>)
     |> assign(:<%= schema.singular %>, <%= inspect context.alias %>.get_<%= schema.singular %>!(id))
   end
 
   defp apply_action(socket, :new, _params) do
     socket
-    |> assign(:page_title, "New <%= schema.human_singular %>")
+    |> assign(:page_title, <%= maybe_gettext.("New #{schema.human_singular}", :ex, @gettext) %>)
     |> assign(:<%= schema.singular %>, %<%= inspect schema.alias %>{})
   end
 
   defp apply_action(socket, :index, _params) do
     socket
-    |> assign(:page_title, "Listing <%= schema.human_plural %>")
+    |> assign(:page_title, <%= maybe_gettext.("Listing #{schema.human_plural}", :ex, @gettext) %>)
     |> assign(:<%= schema.singular %>, nil)
   end
 

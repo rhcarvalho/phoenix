@@ -93,11 +93,31 @@ defmodule Mix.Tasks.Phx.Gen.Live do
   You can also change the table name or configure the migrations to
   use binary ids for primary keys, see `mix help phx.gen.schema` for more
   information.
+
+  ## Gettext support
+
+  By default, user-facing strings in the generated templates use gettext for
+  internationalization. Even if you do not yet plan to support multiple
+  languages, gettext can be still useful for managing user-facing strings and
+  keeping them in one place. It is arguably easier to remove gettext later than
+  to add it to a project that did not use it from the start.
+
+  To disable this feature, pass the `--no-gettext` flag.
+
+      mix phx.gen.live Accounts User users --no-gettext
   """
   use Mix.Task
 
   alias Mix.Phoenix.{Context, Schema}
   alias Mix.Tasks.Phx.Gen
+
+  import Mix.Phoenix.GettextSupport, only: [maybe_gettext: 3]
+
+  @switches [
+    gettext: :boolean
+  ]
+
+  @default_opts [gettext: true]
 
   @doc false
   def run(args) do
@@ -107,10 +127,19 @@ defmodule Mix.Tasks.Phx.Gen.Live do
       )
     end
 
+    {opts, _, _} = parse_opts(args)
+
     {context, schema} = Gen.Context.build(args)
     Gen.Context.prompt_for_code_injection(context)
 
-    binding = [context: context, schema: schema, inputs: inputs(schema)]
+    binding = [
+      context: context,
+      schema: schema,
+      inputs: inputs(schema, opts[:gettext]),
+      assigns: %{gettext: opts[:gettext]},
+      maybe_gettext: &maybe_gettext/3
+    ]
+
     paths = Mix.Phoenix.generator_paths()
 
     prompt_for_conflicts(context)
@@ -119,6 +148,16 @@ defmodule Mix.Tasks.Phx.Gen.Live do
     |> copy_new_files(binding, paths)
     |> maybe_inject_imports()
     |> print_shell_instructions()
+  end
+
+  defp parse_opts(args) do
+    {opts, parsed, invalid} = OptionParser.parse(args, switches: @switches)
+
+    merged_opts =
+      @default_opts
+      |> Keyword.merge(opts)
+
+    {merged_opts, parsed, invalid}
   end
 
   defp prompt_for_conflicts(context) do
@@ -161,10 +200,7 @@ defmodule Mix.Tasks.Phx.Gen.Live do
 
     binding =
       Keyword.merge(binding,
-        assigns: %{
-          web_namespace: inspect(context.web_module),
-          gettext: true
-        }
+        assigns: Map.merge(binding[:assigns], %{web_namespace: inspect(context.web_module)})
       )
 
     Mix.Phoenix.copy_from(paths, "priv/templates/phx.gen.live", binding, files)
@@ -270,7 +306,7 @@ defmodule Mix.Tasks.Phx.Gen.Live do
   end
 
   @doc false
-  def inputs(%Schema{} = schema) do
+  def inputs(%Schema{} = schema, gettext?) do
     schema.attrs
     |> Enum.reject(fn {_key, type} -> type == :map end)
     |> Enum.map(fn
@@ -278,31 +314,31 @@ defmodule Mix.Tasks.Phx.Gen.Live do
         nil
 
       {key, :integer} ->
-        ~s(<.input field={@form[#{inspect(key)}]} type="number" label="#{label(key)}" />)
+        ~s(<.input field={@form[#{inspect(key)}]} type="number" #{label_attr(key, gettext?)} />)
 
       {key, :float} ->
-        ~s(<.input field={@form[#{inspect(key)}]} type="number" label="#{label(key)}" step="any" />)
+        ~s(<.input field={@form[#{inspect(key)}]} type="number" #{label_attr(key, gettext?)} step="any" />)
 
       {key, :decimal} ->
-        ~s(<.input field={@form[#{inspect(key)}]} type="number" label="#{label(key)}" step="any" />)
+        ~s(<.input field={@form[#{inspect(key)}]} type="number" #{label_attr(key, gettext?)} step="any" />)
 
       {key, :boolean} ->
-        ~s(<.input field={@form[#{inspect(key)}]} type="checkbox" label="#{label(key)}" />)
+        ~s(<.input field={@form[#{inspect(key)}]} type="checkbox" #{label_attr(key, gettext?)} />)
 
       {key, :text} ->
-        ~s(<.input field={@form[#{inspect(key)}]} type="text" label="#{label(key)}" />)
+        ~s(<.input field={@form[#{inspect(key)}]} type="text" #{label_attr(key, gettext?)} />)
 
       {key, :date} ->
-        ~s(<.input field={@form[#{inspect(key)}]} type="date" label="#{label(key)}" />)
+        ~s(<.input field={@form[#{inspect(key)}]} type="date" #{label_attr(key, gettext?)} />)
 
       {key, :time} ->
-        ~s(<.input field={@form[#{inspect(key)}]} type="time" label="#{label(key)}" />)
+        ~s(<.input field={@form[#{inspect(key)}]} type="time" #{label_attr(key, gettext?)} />)
 
       {key, :utc_datetime} ->
-        ~s(<.input field={@form[#{inspect(key)}]} type="datetime-local" label="#{label(key)}" />)
+        ~s(<.input field={@form[#{inspect(key)}]} type="datetime-local" #{label_attr(key, gettext?)} />)
 
       {key, :naive_datetime} ->
-        ~s(<.input field={@form[#{inspect(key)}]} type="datetime-local" label="#{label(key)}" />)
+        ~s(<.input field={@form[#{inspect(key)}]} type="datetime-local" #{label_attr(key, gettext?)} />)
 
       {key, {:array, _} = type} ->
         ~s"""
@@ -310,8 +346,8 @@ defmodule Mix.Tasks.Phx.Gen.Live do
           field={@form[#{inspect(key)}]}
           type="select"
           multiple
-          label="#{label(key)}"
-          options={#{inspect(default_options(type))}}
+          #{label_attr(key, gettext?)}
+          options={#{default_options(type, gettext?)}}
         />
         """
 
@@ -320,24 +356,30 @@ defmodule Mix.Tasks.Phx.Gen.Live do
         <.input
           field={@form[#{inspect(key)}]}
           type="select"
-          label="#{label(key)}"
-          prompt="Choose a value"
+          #{label_attr(key, gettext?)}
+          prompt=#{maybe_gettext("Choose a value", :heex_attr, gettext?)}
           options={Ecto.Enum.values(#{inspect(schema.module)}, #{inspect(key)})}
         />
         """
 
       {key, _} ->
-        ~s(<.input field={@form[#{inspect(key)}]} type="text" label="#{label(key)}" />)
+        ~s(<.input field={@form[#{inspect(key)}]} type="text" #{label_attr(key, gettext?)} />)
     end)
   end
 
-  defp default_options({:array, :string}),
-    do: Enum.map([1, 2], &{"Option #{&1}", "option#{&1}"})
+  defp default_options({:array, :string}, gettext?) do
+    if gettext? do
+      ~S|[{gettext("Option") <> " 1", "option1"}, {gettext("Option") <> " 2", "option2"}]|
+    else
+      ~S|[{"Option 1", "option1"}, {"Option 2", "option2"}]|
+    end
+  end
 
-  defp default_options({:array, :integer}),
-    do: Enum.map([1, 2], &{"#{&1}", &1})
+  defp default_options({:array, :integer}, _), do: ~S|[{"1", 1}, {"2", 2}]|
 
-  defp default_options({:array, _}), do: []
+  defp default_options({:array, _}, _), do: "[]"
+
+  defp label_attr(key, gettext?), do: ~s|label=#{maybe_gettext(label(key), :heex_attr, gettext?)}|
 
   defp label(key), do: Phoenix.Naming.humanize(to_string(key))
 end
