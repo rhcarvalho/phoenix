@@ -814,6 +814,13 @@ defmodule Phoenix.Socket do
 
   defp encode_ignore(socket, %{ref: ref, topic: topic}) do
     reply = %Reply{ref: ref, topic: topic, status: :error, payload: %{reason: "unmatched topic"}}
+
+    :telemetry.execute(
+      [:phoenix, :socket_unmatched_topic],
+      %{system_time: System.system_time()},
+      %{socket: socket, reply: reply}
+    )
+
     encode_reply(socket, reply)
   end
 
